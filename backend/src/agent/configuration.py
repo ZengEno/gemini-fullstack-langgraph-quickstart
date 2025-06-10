@@ -3,27 +3,36 @@ from pydantic import BaseModel, Field
 from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
-
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 
 class Configuration(BaseModel):
     """The configuration for the agent."""
 
+    provider: str = Field(
+        default="ollama",
+        metadata={"description": "The provider to use for the agent's language model."},
+    )
+
     query_generator_model: str = Field(
-        default="gemini-2.0-flash",
+        # default="gemini-2.0-flash",
+        default="flash",
         metadata={
             "description": "The name of the language model to use for the agent's query generation."
         },
     )
 
     reflection_model: str = Field(
-        default="gemini-2.5-flash-preview-04-17",
+        # default="gemini-2.5-flash-preview-04-17",
+        default="flash",
         metadata={
             "description": "The name of the language model to use for the agent's reflection."
         },
     )
 
     answer_model: str = Field(
-        default="gemini-2.5-pro-preview-05-06",
+        # default="gemini-2.5-pro-preview-05-06",
+        default="pro",
         metadata={
             "description": "The name of the language model to use for the agent's answer."
         },
@@ -58,3 +67,39 @@ class Configuration(BaseModel):
         values = {k: v for k, v in raw_values.items() if v is not None}
 
         return cls(**values)
+
+
+
+def get_llm(provider: str="ollama", model_type: str="flash", temperature: float=1.0, max_retries: int=2):
+    if provider == "ollama":
+        if model_type == "flash":
+            return ChatOllama(
+                model="qwen2.5:7b",
+                temperature=temperature,
+                max_retries=max_retries,
+            )
+        elif model_type == "pro":
+            return ChatOllama(
+                model="qwen2.5:32b",
+                temperature=temperature,
+                max_retries=max_retries,
+            )
+    elif provider == "aliyun":
+        if model_type == "flash":
+            return ChatOpenAI(
+                model="qwen-turbo",
+                temperature=temperature,
+                max_retries=max_retries,
+                api_key=os.getenv("DASHSCOPE_API_KEY"),
+                base_url=os.getenv("DASHSCOPE_BASE_URL"),
+            )
+        elif model_type == "pro":
+            return ChatOpenAI(
+                model="qwen-plus",
+                temperature=temperature,
+                max_retries=max_retries,
+                api_key=os.getenv("DASHSCOPE_API_KEY"),
+                base_url=os.getenv("DASHSCOPE_BASE_URL"),
+            )
+    else:
+        raise ValueError(f"Invalid provider or model type")
