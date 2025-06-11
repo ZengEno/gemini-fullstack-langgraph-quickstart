@@ -10,7 +10,7 @@ class Configuration(BaseModel):
     """The configuration for the agent."""
 
     provider: str = Field(
-        default="ollama",
+        default="aliyun",
         metadata={"description": "The provider to use for the agent's language model."},
     )
 

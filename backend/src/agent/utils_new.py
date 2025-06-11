@@ -1,3 +1,4 @@
+import re
 from typing import Any, Dict, List
 from langchain_core.messages import AnyMessage, AIMessage, HumanMessage
 
@@ -56,3 +57,27 @@ def format_citation_sources(search_result: List[Any], resolved_map: Dict[str, st
                                  "short_url": short_url, 
                                  "value": value})
     return citation_sources
+
+
+
+def extract_json_content(text: str) -> str:
+    """Extract JSON content from a string that starts with ```json and ends with ```.
+    
+    Args:
+        text: String containing JSON content wrapped in ```json and ```
+        
+    Returns:
+        Extracted JSON content as a string
+    """
+    # First check if the string starts with ```json and ends with ```
+    if not (text.startswith("```json") and text.endswith("```")):
+        return ""
+        
+    # Remove the ```json and ``` markers
+    text = text[7:-3].strip()
+    
+    # Find content between first { and last }
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if match:
+        return match.group(0)
+    return ""

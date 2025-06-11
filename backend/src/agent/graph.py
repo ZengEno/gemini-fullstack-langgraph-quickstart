@@ -1,4 +1,3 @@
-import os
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage
 from langgraph.types import Send
@@ -28,6 +27,7 @@ from src.agent.utils_new import (
     resolve_urls,
     get_modified_text,
     format_citation_sources,
+    extract_json_content,
 )
 from src.agent.opensearch import call_opensearch_service
 
@@ -66,7 +66,6 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
                   model_type=configurable.query_generator_model, 
                   temperature=1.0, 
                   max_retries=2)
-    structured_llm = llm.with_structured_output(SearchQueryList)
 
     # Format the prompt
     current_date = get_current_date()
@@ -75,8 +74,16 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         research_topic=get_research_topic(state["messages"]),
         number_queries=state["initial_search_query_count"],
     )
+
     # Generate the search queries
-    result = structured_llm.invoke(formatted_prompt)
+    if configurable.provider == "aliyun":
+        llm_with_tool = llm.bind_tools([SearchQueryList])
+        response_llm_with_tool = llm_with_tool.invoke(formatted_prompt)
+        json_content = extract_json_content(response_llm_with_tool.content)
+        result = SearchQueryList.model_validate_json(json_content)
+    else: 
+        result = llm.with_structured_output(SearchQueryList).invoke(formatted_prompt)
+
     return {"query_list": result.query}
 
 
@@ -176,7 +183,14 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
                   model_type=configurable.reflection_model, 
                   temperature=1.0, 
                   max_retries=2)
-    result = llm.with_structured_output(Reflection).invoke(formatted_prompt)
+    
+    if configurable.provider == "aliyun":
+        llm_with_tool = llm.bind_tools([Reflection])
+        response_llm_with_tool = llm_with_tool.invoke(formatted_prompt)
+        json_content = extract_json_content(response_llm_with_tool.content)
+        result = Reflection.model_validate_json(json_content)
+    else:
+        result = llm.with_structured_output(Reflection).invoke(formatted_prompt)
 
     return {
         "is_sufficient": result.is_sufficient,
